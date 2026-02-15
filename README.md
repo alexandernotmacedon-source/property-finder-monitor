@@ -1,7 +1,14 @@
 # Property Finder Monitor
 
 Automated monitoring for PropertyFinder.ae listings in Dubai Creek Harbour.
-Uses Playwright with stealth mode to bypass bot detection.
+
+## ⚠️ Important: Manual Checking Required
+
+PropertyFinder.ae has strong anti-bot protection that blocks automated scraping. This project uses a **hybrid approach**:
+
+- **Automated**: Cron job triggers every 4 hours
+- **Manual**: AI agent checks the website manually via browser
+- **Notifications**: New listings sent to Telegram bot @Property_Dubai_bot
 
 ## Search Criteria
 
@@ -11,160 +18,113 @@ Uses Playwright with stealth mode to bypass bot detection.
 - **Max Price:** 1,800,000 AED
 - **Min Size:** 740 sqft
 
-## Features
+## How It Works
 
-- ✅ **Stealth Mode**: Playwright + stealth plugins to bypass bot detection
-- ✅ **Human-like Behavior**: Random delays, realistic scrolling, proper viewport
-- ✅ **Duplicate Filtering**: Remembers seen listings in `seen_listings.json`
-- ✅ **Pagination Support**: Checks multiple pages
-- ✅ **Telegram Notifications**: Instant alerts for new properties
-- ✅ **Docker Support**: Easy deployment
+1. **Every 4 hours** OpenClaw cron job wakes up
+2. **AI agent** opens PropertyFinder in browser
+3. **Checks** for new 1BR listings matching criteria
+4. **Sends** Telegram notification if new listing found
+5. **Tracks** seen listings to avoid duplicates
 
-## Quick Start
+## Quick Links
 
-### 1. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-playwright install chromium
-```
-
-### 2. Configure Environment
-
-```bash
-cp .env.example .env
-# Edit .env with your Telegram bot token and chat ID
-```
-
-### 3. Run Test (Visible Browser)
-
-```bash
-python cron_runner.py --visible --test
-```
-
-### 4. Run Production (Headless)
-
-```bash
-python cron_runner.py
-```
-
-## Usage
-
-### Manual Run
-
-```bash
-# Headless mode (production)
-python cron_runner.py
-
-# Visible browser (debugging)
-python cron_runner.py --visible
-
-# Test mode (no Telegram notifications)
-python cron_runner.py --visible --test
-```
-
-### Cron Schedule
-
-Add to crontab (every 4 hours):
-
-```bash
-0 */4 * * * cd /path/to/property-finder-monitor && /usr/bin/python3 cron_runner.py >> /var/log/property-monitor.log 2>&1
-```
-
-Or use the provided systemd service.
-
-## Docker Deployment
-
-### Build
-
-```bash
-docker build -t property-finder-monitor .
-```
-
-### Run
-
-```bash
-docker run -d \
-  --env-file .env \
-  -v $(pwd)/seen_listings.json:/app/seen_listings.json \
-  property-finder-monitor
-```
-
-### Docker Compose
-
-```bash
-docker-compose up -d
-```
+- **Search URL:** https://www.propertyfinder.ae/en/search?c=1&beds_in=1&fu=0&ob=mr&pf=740&pr=1800000&q=%22Creek%20Harbour%22&rp=y&t=1
+- **Telegram Bot:** @Property_Dubai_bot
+- **Notifications to:** Chat ID 440261312
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `TELEGRAM_BOT_TOKEN` | Your Telegram bot token (from @BotFather) | Required |
-| `TELEGRAM_CHAT_ID` | Your Telegram chat ID | Required |
-| `NOTIFY_ON_EMPTY` | Send notification even if no listings found | `false` |
-| `MAX_PRICE` | Maximum price in AED | `1800000` |
-| `MIN_SIZE` | Minimum size in sqft | `740` |
+Create `.env` file:
 
-### Getting Telegram Chat ID
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+NOTIFY_ON_EMPTY=false
+```
 
-1. Message @userinfobot on Telegram
-2. It will reply with your chat ID
+### Getting Credentials
 
-## Architecture
+1. **Bot Token**: Message @BotFather → /newbot → copy token
+2. **Chat ID**: Message @userinfobot → copy your ID
+
+## Files
 
 ```
 property-finder-monitor/
-├── scraper.py          # Main scraper with stealth mode
-├── cron_runner.py      # CLI runner with Telegram integration
-├── monitor.py          # Simple monitor (legacy)
+├── monitor.py          # Helper script for tracking seen listings
 ├── requirements.txt    # Python dependencies
-├── Dockerfile         # Docker image
-├── docker-compose.yml # Docker Compose config
+├── .env               # Environment configuration (not committed)
 ├── .env.example       # Environment template
-├── .gitignore         # Git ignore rules
-└── seen_listings.json # Database of seen listings (auto-created)
+├── seen_listings.json # Database of seen listings (auto-created)
+├── README.md          # This file
+└── .gitignore         # Git ignore rules
 ```
 
-## Anti-Detection Measures
+## Usage
 
-The scraper uses multiple techniques to avoid detection:
+### Manual Test
 
-1. **Stealth Mode**: `playwright-stealth` patches automation indicators
-2. **Realistic Viewport**: Full HD resolution, proper color scheme
-3. **Human-like Delays**: Random delays between actions (2-8 seconds)
-4. **Natural Scrolling**: Gradual page scrolling with pauses
-5. **Geolocation**: Dubai coordinates and timezone
-6. **Browser Args**: Disables automation flags that detectors look for
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run helper script
+python monitor.py
+```
+
+### Check Search URL Manually
+
+Open this URL in browser:
+```
+https://www.propertyfinder.ae/en/search?c=1&beds_in=1&fu=0&ob=mr&pf=740&pr=1800000&q=%22Creek%20Harbour%22&rp=y&t=1
+```
+
+Look for:
+- ✅ 1 bedroom
+- ✅ Ready status (not off-plan)
+- ✅ Price ≤ 1,800,000 AED
+- ✅ Size ≥ 740 sqft
+
+## Cron Schedule
+
+Current schedule: **Every 4 hours**
+
+Managed by OpenClaw cron jobs:
+- Job ID: `9fee7622-3414-463b-b764-b6a0b7143a3f`
+- Status: Active
+- Next run: Automatic
+
+## Last Found Listing
+
+**17 Icon Bay**
+- Price: 1,800,000 AED
+- Size: 765 sqft
+- Status: Ready (Resale)
+- Date Found: 2026-02-15
 
 ## Troubleshooting
 
-### CAPTCHA / Blocked
+### No notifications received
 
-- Increase delays in `scraper.py` (`human_like_delay`)
-- Use `--visible` mode to see what's happening
-- Check if IP is rate-limited (wait 1 hour)
-- Consider using residential proxy
+1. Check bot @Property_Dubai_bot is running
+2. Verify TELEGRAM_CHAT_ID is correct
+3. Check if bot is blocked
 
-### No Listings Found
+### PropertyFinder shows CAPTCHA
 
-- Check if selectors changed (inspect PropertyFinder HTML)
-- Verify search URL is correct
-- Use `--visible --test` to debug
+This is expected. The AI agent handles this manually.
 
-### Playwright Not Installed
+## Why Not Automated Scraping?
 
-```bash
-playwright install chromium
-# Or for all browsers:
-playwright install
-```
+PropertyFinder uses:
+- Cloudflare protection
+- Rate limiting
+- Bot detection
+- CAPTCHA challenges
 
-## Legal Notice
-
-This tool is for personal use only. Respect PropertyFinder's Terms of Service and robots.txt. Use reasonable request rates (max once per hour recommended).
+All automated scraping attempts return 403 Forbidden.
 
 ## License
 
